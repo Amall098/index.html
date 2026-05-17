@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BURKE // PATCH 17.90: Le Code Legacy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700;900&display=swap');
+
+        :root {
+            --neon-amber: #f59e0b;
+            --neon-blue: #0ea5e9;
+            --neon-red: #f43f5e;
+            --neon-green: #10b981;
+            --dark-bg: #020617;
+            --card-bg: rgba(15, 23, 42, 0.7);
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--dark-bg);
+            color: #e2e8f0;
+        }
+
+        h1, h2, h3, .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Neon Text Effects */
+        .text-glitch {
+            text-shadow: 2px 0 var(--neon-amber), -2px 0 var(--neon-blue);
+            animation: glitch 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 var(--neon-amber), -2px 0 var(--neon-blue); }
+            20% { text-shadow: -2px 0 var(--neon-amber), 2px 0 var(--neon-blue); }
+            40% { text-shadow: 2px 0 var(--neon-amber), -2px 0 var(--neon-blue); }
+            100% { text-shadow: -2px 0 var(--neon-amber), 2px 0 var(--neon-blue); }
+        }
+
+        /* Tabs styling */
+        .tab-content { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Chart Containers */
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* Range Slider Customization */
+        .slider-container { margin-bottom: 1.5rem; }
+        .comparison-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 4px;
+            background: #334155;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .comparison-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--neon-amber);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--neon-amber);
+            transition: transform 0.1s;
+        }
+        .comparison-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+
+        /* SVG Network Graph Styling */
+        #network-svg {
+            width: 100%;
+            height: 100%;
+            min-height: 450px;
+            background-color: #0f172a;
+            border-radius: 0.5rem;
+            cursor: grab;
+            border: 1px solid #1e293b;
+        }
+        
+        .node-circle {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        
+        .node-circle:hover {
+            filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.6));
+            stroke-width: 3px;
+        }
+
+        .node-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5px;
+            font-weight: 700;
+            fill: #020617;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        .node-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3px;
+            font-weight: 600;
+            fill: #94a3b8;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .link-path {
+            fill: none;
+            stroke-width: 0.8;
+            stroke-linecap: round;
+            transition: all 0.5s ease;
+        }
+
+        .link-path.active {
+            stroke: var(--neon-amber);
+            stroke-width: 1.5;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: drawLine 1s forwards;
+            opacity: 0.8;
+            filter: drop-shadow(0 0 5px var(--neon-amber));
+        }
+
+        .link-path.inactive {
+            stroke: #334155;
+            opacity: 0.3;
+        }
+
+        @keyframes drawLine {
+            to { stroke-dashoffset: 0; }
+        }
+
+        .selected-node {
+            stroke: #fcd34d !important;
+            stroke-width: 2.5px !important;
+            filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.8));
+        }
+
+        .highlight-burke {
+            background-color: rgba(245, 158, 11, 0.1) !important;
+            border-left: 4px solid var(--neon-amber) !important;
+        }
+
+        .terminal-block {
+            background-color: #020617;
+            border-left: 4px solid var(--neon-amber);
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-300 selection:bg-amber-500 selection:text-black">
+
+    <!-- Header -->
+    <header class="relative overflow-hidden bg-black py-20 px-4 border-b border-white/10">
+        <div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+            <div class="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#f59e0b] rounded-full blur-[150px]"></div>
+            <div class="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0ea5e9] rounded-full blur-[150px]"></div>
+        </div>
+        
+        <div class="container mx-auto max-w-6xl relative z-10">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4 text-amber-500 font-mono">
+                        <i data-lucide="terminal" class="w-6 h-6"></i>
+                        <span class="text-sm font-bold tracking-wider uppercase">POL2108 // System Override</span>
+                    </div>
+                    <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight tracking-tight text-white uppercase text-glitch">
+                        Défendre le Code Legacy
+                    </h1>
+                    <p class="text-xl text-gray-400 max-w-2xl font-light leading-relaxed">
+                        1789,La France fait un wipe total de son serveur. Edmund Burke est le Développeur Senior qui hurle : Ne supprimez pas le code hérité !
+                    </p>
+                </div>
+                <div class="flex-1 max-w-md glass-card p-6 border-amber-500/30">
+                    <p class="text-amber-400 font-mono mb-2">SYSTEM_WARNING :</p>
+                    <p class="text-gray-300 text-sm">
+                        Tu crois pouvoir réécrire la société de zéro (Tabula Rasa) en utilisant une logique purement abstraite ? Tu vas faire planter tout le système. La stabilité exige une sagesse héritée, pas juste une puissance de calcul brute.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto max-w-6xl px-4 py-16 space-y-20">
+        
+        <!-- Introduction: The 3 Postures -->
+        <section class="glass-card p-8 border-gray-800">
+            <h2 class="text-3xl font-bold text-white mb-8 font-mono">La Crise DevOps : 1790</h2>
+            <div class="grid md:grid-cols-2 gap-10 items-center">
+                <div class="space-y-4 text-gray-400 leading-relaxed">
+                    <p>
+                        <strong>La Meta :</strong> Les moddeurs radicaux de France (les Révolutionnaires) ont décidé de supprimer l ancien système d exploitation et d en construire un nouveau basé sur la Raison pure et abstraite.
+                    </p>
+                    <p>
+                        Burke observe cela depuis l Angleterre et réalise que c est un désastre. Il développe un framework philosophique pour protéger le Code Legacy (la tradition) en interagissant avec la logique de 5 développeurs précédents :
+                    </p>
+                </div>
+                <div class="bg-black/50 p-6 rounded-xl border border-gray-800">
+                    <h4 class="font-bold text-white mb-4 uppercase tracking-wide text-sm font-mono">Les 3 Patch Notes de Burke :</h4>
+                    <ul class="space-y-4 text-sm text-gray-300">
+                        <li class="flex items-start gap-3">
+                            <div class="mt-0.5 bg-green-900/50 p-1 rounded text-green-400 border border-green-800"><i data-lucide="download" class="w-4 h-4"></i></div>
+                            <span><strong>BACKUP (Hériter) :</strong> L architecture legacy de Montesquieu (les corps intermédiaires) et le framework de la propriété de Locke.</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="mt-0.5 bg-red-900/50 p-1 rounded text-red-400 border border-red-800"><i data-lucide="shield-alert" class="w-4 h-4"></i></div>
+                            <span><strong>DEBUG (Combattre) :</strong> L exploit toxique de la Volonté Générale de Rousseau, l état sécuritaire brut de Hobbes, et l abstraction de Sieyès qui efface les serveurs.</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="mt-0.5 bg-amber-900/50 p-1 rounded text-amber-400 border border-amber-800"><i data-lucide="git-merge" class="w-4 h-4"></i></div>
+                            <span><strong>PATCH (Déplacer) :</strong> Forger un nouveau paradigme. La Liberté est un fichier de sauvegarde, le Préjugé est une donnée en cache, et réformer signifie mettre à jour, non pas supprimer.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE PEDAGOGICAL CONCEPT MAP -->
+        <section class="glass-card border-gray-800 overflow-hidden">
+            <div class="bg-black/40 border-b border-gray-800 p-6">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-3 font-mono">
+                    <i data-lucide="network" class="w-6 h-6 text-amber-500"></i>
+                    Carte d Architecture Réseau
+                </h2>
+                <p class="text-sm text-gray-400 mt-2">Cliquez sur un dev (philosophe) ou un module (concept) pour rétro-ingénierer la codebase de Burke.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3">
+                <!-- SVG Network Area -->
+                <div class="lg:col-span-2 bg-[#020617] p-4 relative border-r border-gray-800">
+                    <svg id="network-svg" viewBox="0 0 100 100">
+                        <!-- Links and Nodes generated via JS -->
+                    </svg>
+                </div>
+                
+                <!-- Dynamic Explanatory Panel -->
+                <div class="p-8 bg-[#0f172a] flex flex-col justify-center min-h-[400px]" id="network-details-panel">
+                    <div class="animate-pulse flex flex-col items-center text-gray-600">
+                        <i data-lucide="mouse-pointer-click" class="w-12 h-12 mb-4 opacity-50"></i>
+                        <p class="text-center font-medium font-mono">Sélectionnez un nœud pour extraire les données.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Philosophy Explorer (Sliders & Radar) -->
+        <section class="glass-card border-amber-500/30 p-8 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+            
+            <div class="relative z-10 mb-8">
+                <h3 class="text-3xl font-bold text-white mb-2 flex items-center gap-3 font-mono">
+                    <i data-lucide="sliders-horizontal" class="w-8 h-8 text-amber-500"></i>
+                    Calibrez Votre Algorithme
+                </h3>
+                <p class="text-gray-400">
+                    Ajustez les curseurs ci-dessous sur les 6 paramètres fondamentaux. Êtes-vous un nettoyeur de serveur radical ou un défenseur du code legacy ?
+                </p>
+            </div>
+            
+            <div class="grid lg:grid-cols-2 gap-12 relative z-10">
+                <!-- Parameter Controls -->
+                <div class="bg-black/50 p-6 rounded-xl border border-gray-800">
+                    <h4 class="text-lg font-bold text-amber-500 mb-6 font-mono">> SYSTEM_VARS</h4>
+                    
+                    <div class="space-y-6">
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Contrat Social (CGU)</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="contractSlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Joueurs Actuels</span>
+                                <span>Transgénérationnel</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Nature de la Liberté</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="libertySlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Release Universelle (J1)</span>
+                                <span>Fichier de Sauvegarde Hérité</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Statut du Préjugé</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="prejudiceSlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Données Corrompues (Supprimer)</span>
+                                <span>Sagesse en Cache (Garder)</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Rôle de la Religion</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="religionSlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Message Privé (DM) Uniquement</span>
+                                <span>Authentification Globale</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Fonction de la Propriété</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="propertySlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Statistique Abstraite</span>
+                                <span>Lest Anti-Lag</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-container">
+                            <label class="block text-sm font-bold text-white mb-2">Attachement Politique</label>
+                            <input type="range" min="0" max="100" value="50" class="comparison-slider" id="attachmentSlider">
+                            <div class="flex justify-between text-xs font-mono text-gray-500 mt-2 uppercase">
+                                <span>Code Brut (Utilité)</span>
+                                <span>UI Immersive (Lore)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="resetButton" class="mt-8 w-full py-3 bg-gray-800 text-white font-mono font-bold rounded-lg hover:bg-gray-700 transition border border-gray-600">
+                        REINITIALISER
+                    </button>
+                </div>
+
+                <!-- Philosophy Chart -->
+                <div class="flex flex-col">
+                    <div class="bg-black/60 p-4 rounded-xl border border-gray-800 flex-grow relative">
+                        <div class="chart-container">
+                            <canvas id="philosophyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-5 bg-amber-900/20 border border-amber-700/50 rounded-xl">
+                        <div class="flex gap-3 items-start">
+                            <i data-lucide="cpu" class="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <h5 class="font-bold text-amber-500 mb-1 font-mono">Logs de Diagnostic</h5>
+                                <p class="text-sm text-gray-300 leading-relaxed" id="philosophySummary">
+                                    En attente de données. Ajustez les curseurs pour compiler votre profil philosophique.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Philosophical Dialogues (Tabs) -->
+        <section class="glass-card border-gray-800 p-8 mb-20">
+            <h2 class="text-3xl font-bold text-white mb-8 font-mono">Extraction des 6 Modules Core</h2>
+            
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap border-b border-gray-800 mb-8 gap-2 font-mono text-sm">
+                <button class="tab-btn active px-4 py-3 font-bold text-amber-500 border-b-2 border-amber-500 bg-amber-500/10 transition-colors" data-tab="contract">1.CGU_Contrat</button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-amber-400 hover:bg-gray-800/50 transition-colors" data-tab="liberty">2.Save_Liberte</button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-amber-400 hover:bg-gray-800/50 transition-colors" data-tab="prejudice">3.Cache_Prejuge</button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-amber-400 hover:bg-gray-800/50 transition-colors" data-tab="religion">4.Auth_Religion</button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-amber-400 hover:bg-gray-800/50 transition-colors" data-tab="property">5.Lest_Propriete</button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-amber-400 hover:bg-gray-800/50 transition-colors" data-tab="imagination">6.UI_Imagination</button>
+            </div>
+
+            <!-- TAB 1: CONTRACT -->
+            <div id="contract" class="tab-content active">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">La Société comme Serveur Transgénérationnel</h4>
+                    <p class="text-gray-400 italic">
+                        La société est en effet un contrat... elle devient un partenariat non seulement entre les vivants, mais entre les vivants, les morts et ceux qui sont à naître.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Logique des CGU (Contrat)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">HOBBES</td>
+                                <td class="py-3 px-5 text-gray-400">Pacte de PAIX : Abandonnez tous les droits admin au Léviathan pour éviter de vous faire gank. Un contrat utilitariste brut.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">Pacte de CONSENTEMENT : Délégation des pouvoirs de modération pour protéger l inventaire (propriété). Révocable par les joueurs actuels.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">ROUSSEAU</td>
+                                <td class="py-3 px-5 text-gray-400">Pacte de LIBERTÉ : Aliénation totale à la communauté (Volonté Générale). Le serveur vote constamment sur les règles.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">SIEYÈS</td>
+                                <td class="py-3 px-5 text-gray-400">ACTE CONSTITUANT : La Nation s établit comme admin root à l instant T. La base de joueurs actuelle ne doit rien à l ancien code.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">PARTENARIAT INTERGÉNÉRATIONNEL : Les joueurs actuels ne sont que des modos temporaires, pas les propriétaires. Vous ne pouvez pas supprimer le serveur car les morts et ceux à naître y possèdent aussi des parts.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: LIBERTY -->
+            <div id="liberty" class="tab-content">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">La Liberté comme Fichier de Sauvegarde</h4>
+                    <p class="text-gray-400 italic">
+                        De la Magna Carta à la Déclaration des Droits, la politique uniforme de notre constitution a été de réclamer et d affirmer nos libertés comme un héritage inaliénable qui nous vient de nos ancêtres.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Quelle Liberté ? Basée sur quoi ?</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">LIBERTÉ NATURELLE : Préexiste au serveur, codée en dur dans la nature universelle du Joueur.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">ROUSSEAU</td>
+                                <td class="py-3 px-5 text-gray-400">LIBERTÉ CIVILE : Vous spawnez libre mais êtes corrompu. Seule l obéissance à la Volonté Générale du serveur vous rend véritablement libre à nouveau.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">SIEYÈS</td>
+                                <td class="py-3 px-5 text-gray-400">LIBERTÉ NATIONALE : Les Droits de l Homme sont une API abstraite applicable à n importe quel système partout.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">LIBERTÉ HÉRITÉE : Une liberté anglaise, concrète, construite patch après patch. Transmise comme un fichier de sauvegarde de haut niveau, et non réinventée depuis la Nature abstraite du niveau 1.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: PREJUDICE -->
+            <div id="prejudice" class="tab-content">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">Le Préjugé comme Sagesse en Cache</h4>
+                    <p class="text-gray-400 italic">
+                        Nous craignons de laisser les hommes vivre et échanger chacun sur son propre fonds de raison privée... Au lieu de rejeter tous nos vieux préjugés, nous les chérissons... et plus ils ont duré... plus nous les chérissons.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Statut du Préjugé (Traditions)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">MALWARE : La Raison pure doit déboguer les préjugés pour atteindre la vérité et le consentement éclairé.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">ROUSSEAU</td>
+                                <td class="py-3 px-5 text-gray-400">DONNÉES CORROMPUES : Les préjugés sont des bugs générés par une société inégale. Doivent être effacés.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">SIEYÈS</td>
+                                <td class="py-3 px-5 text-gray-400">PRIVILÈGE ADMIN DÉGUISÉ : Les préjugés de l Ancien Régime ne sont que les Nobles défendant leurs cheat codes.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">SAGESSE EN CACHE : Le CPU individuel est faible. Les préjugés sont des algorithmes qui ont survécu à des millions de stress tests. Ce sont des heuristiques sociales hautement optimisées. Utilisez le cache !</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: RELIGION -->
+            <div id="religion" class="tab-content">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">La Religion comme Authentification du Serveur</h4>
+                    <p class="text-gray-400 italic">
+                        Nous consacrons l État, afin qu aucun homme ne s approche pour examiner ses défauts ou ses corruptions sans la prudence requise.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Rôle Politique de la Religion</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">LOCALHOST UNIQUEMENT : Le serveur ne peut pas imposer un système de croyance. La religion est strictement locale.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">ROUSSEAU</td>
+                                <td class="py-3 px-5 text-gray-400">RELIGION CIVILE : Croyances minimales nécessaires dans les CGU pour jouer, mais rejet pur et dur de l architecture institutionnelle de l Église.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">AUTHENTIFICATION ROOT : L État DOIT être consacré. Un serveur purement séculier et hyper-rationnel perd toute son aura d admin. Sans authentification sacrée, les modos finissent par faire respecter les règles par la violence physique (L algorithme de la Guillotine).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: PROPERTY -->
+            <div id="property" class="tab-content">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">La Propriété comme Lest Anti-Lag</h4>
+                    <p class="text-gray-400 italic">
+                        La capacité est un principe vigoureux et actif, et comme la propriété est apathique, inerte et timide, elle ne peut jamais être à l abri des invasions de la capacité, à moins de prédominer dans la représentation.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Fonction de la Propriété (Inventaire)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">DROIT NATUREL : Vous l avez farmé, c est à vous. Les admins existent juste pour le protéger des griefers.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">ROUSSEAU</td>
+                                <td class="py-3 px-5 text-gray-400">SOURCE DU BUG : L arnaque originelle qui a ruiné l état d équilibre du niveau 1 de la nature.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">LEST DE STABILITÉ : Les propriétaires de biens hérités de haut rang sont lents et apathiques. C est une feature, pas un bug. Ils empêchent les try-harders radicaux (intellectuels très capables mais sans attache réelle au serveur) de pousser constamment des mises à jour expérimentales dangereuses.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: IMAGINATION -->
+            <div id="imagination" class="tab-content">
+                <div class="terminal-block mb-6">
+                    <h4 class="text-xl font-bold text-white mb-2 font-mono">Imagination Morale et UX</h4>
+                    <p class="text-gray-400 italic">
+                        Mais l âge de la chevalerie est révolu. Celui des sophistes, des économistes et des calculateurs lui a succédé... Sans imagination morale, nos institutions ne pourront jamais incarner en nous ni amour ni vénération.
+                    </p>
+                </div>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-800 mb-6 bg-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-900 border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono w-1/4">DEV</th>
+                                <th class="py-3 px-5 text-left text-sm font-bold text-gray-400 font-mono">Qu est-ce qui attache le Joueur au Jeu ?</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-sm">
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">HOBBES</td>
+                                <td class="py-3 px-5 text-gray-400">PEUR : La peur de se faire spawn-kill à l état de nature.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-5 font-bold text-white">LOCKE</td>
+                                <td class="py-3 px-5 text-gray-400">UTILITÉ : Tant que le serveur tourne bien et que mon loot est en sécurité.</td>
+                            </tr>
+                            <tr class="highlight-burke">
+                                <td class="py-4 px-5 font-black text-amber-400 font-mono">BURKE ✦</td>
+                                <td class="py-4 px-5 text-amber-200">UX / LORE IMMERSIF : La politique a besoin de beauté (la chevalerie). Si vous enlevez les textures haute résolution et le lore, le jeu n est plus qu un code vert brut et une mécanique de force brute. Personne ne défend une calculatrice, on défend un Royaume.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-black border-t border-white/10 py-10 text-center text-gray-600 text-sm font-mono">
+        <p class="font-bold text-gray-400">POL2508: Système de Surcharge Interactif</p>
+        <p class="mt-2 opacity-75">Burke en Dialogue • Conservatisme et Préservation du Legacy</p>
+    </footer>
+
+    <script>
+        // Icons Init
+        lucide.createIcons();
+
+        // === TAB MANAGEMENT ===
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Reset buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active', 'text-amber-500', 'border-amber-500', 'bg-amber-500/10', 'font-bold');
+                    b.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+                });
+                
+                // Set active button
+                this.classList.add('active', 'text-amber-500', 'border-amber-500', 'bg-amber-500/10', 'font-bold');
+                this.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+
+                // Switch content
+                const tabId = this.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // === CHART.JS RADAR INITIALIZATION ===
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+        Chart.defaults.color = '#94a3b8';
+
+        const ctx = document.getElementById('philosophyChart').getContext('2d');
+        let philosophyChart;
+        
+        // Philosopher positions data (Scale 0-100 based on the 6 sliders)
+        const philosopherPositions = {
+            'Burke': [90, 90, 90, 80, 70, 90],
+            'Your Profile': [50, 50, 50, 50, 50, 50]
+        };
+
+        function initChart() {
+            if (philosophyChart) philosophyChart.destroy();
+            
+            philosophyChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'CGU_Temps',
+                        'Save_Liberte',
+                        'Cache_Sagesse',
+                        'Auth_Religion',
+                        'AntiLag_Prop',
+                        'UX_Emotion'
+                    ],
+                    datasets: [
+                        {
+                            label: 'Votre Algorithme',
+                            data: philosopherPositions['Your Profile'],
+                            backgroundColor: 'rgba(14, 165, 233, 0.3)', // neon blue
+                            borderColor: 'rgba(14, 165, 233, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(14, 165, 233, 1)'
+                        },
+                        {
+                            label: 'E. Burke (Legacy)',
+                            data: philosopherPositions['Burke'],
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)', // amber
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointBackgroundColor: 'rgba(245, 158, 11, 1)',
+                            pointBorderColor: '#000'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255,255,255,0.05)' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            pointLabels: { color: '#94a3b8', font: { size: 10, weight: 700 } },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { family: "'JetBrains Mono', monospace" } } }
+                    }
+                }
+            });
+        }
+
+        // Slider Updates
+        function updateChart() {
+            philosopherPositions['Your Profile'] = [
+                document.getElementById('contractSlider').value,
+                document.getElementById('libertySlider').value,
+                document.getElementById('prejudiceSlider').value,
+                document.getElementById('religionSlider').value,
+                document.getElementById('propertySlider').value,
+                document.getElementById('attachmentSlider').value
+            ];
+            
+            philosophyChart.data.datasets[0].data = philosopherPositions['Your Profile'];
+            philosophyChart.update();
+            updatePhilosophySummary();
+        }
+
+        // Diagnostic Text Update
+        function updatePhilosophySummary() {
+            const pos = philosopherPositions['Your Profile'];
+            const burkePos = philosopherPositions['Burke'];
+            
+            let totalDiff = 0;
+            for (let i = 0; i < pos.length; i++) {
+                totalDiff += Math.abs(pos[i] - burkePos[i]);
+            }
+            const avgDiff = totalDiff / pos.length;
+            const similarity = Math.round(100 - avgDiff);
+            
+            let summary = `<strong class="text-white text-lg block mb-2 font-mono">> Compatibilité du Code : ${similarity}%</strong>`;
+            
+            if (similarity > 80) {
+                summary += "Vous êtes un Architecte Système Senior. Vous protégez le code legacy à tout prix, comprenant que des bugs organiques sont préférables à un wipe fatal du système.";
+            } else if (similarity > 60) {
+                summary += "Vous penchez pour la rétrocompatibilité. Vous aimez télécharger de nouveaux patchs, mais vous gardez toujours une sauvegarde de l ancienne base de données au cas où.";
+            } else if (similarity > 40) {
+                summary += "Build hybride. Vous essayez de mélanger des modules open-source abstraits avec du matériel propriétaire legacy. Risqué, mais équilibré.";
+            } else if (similarity > 20) {
+                summary += "Vous devenez radical. Vous pensez que le serveur actuel est saturé de code legacy spaghetti et vous voulez commencer à faire un refactoring massif.";
+            } else {
+                summary += "EXPLOIT ROOT DETECTE. Vous êtes Sieyès. Vous voulez exécuter rm -rf / sur l Ancien Régime et construire une nouvelle société en utilisant une logique purement abstraite.";
+            }
+            
+            document.getElementById('philosophySummary').innerHTML = summary;
+        }
+
+        // Init Sliders
+        const sliders = document.querySelectorAll('.comparison-slider');
+        sliders.forEach(slider => slider.addEventListener('input', updateChart));
+        document.getElementById('resetButton').addEventListener('click', () => {
+            sliders.forEach(slider => slider.value = 50);
+            updateChart();
+        });
+
+        initChart();
+        updatePhilosophySummary();
+
+        // === INTERACTIVE D3-STYLE SVG NETWORK LOGIC ===
+        const svg = document.getElementById('network-svg');
+        const detailsPanel = document.getElementById('network-details-panel');
+
+        // Network Data Structure
+        const networkData = {
+            nodes: [
+                // Center
+                { id: 'burke', label: 'BURKE', type: 'center', x: 50, y: 50, r: 14, color: '#f59e0b', icon: 'terminal' }, 
+                
+                // Philosophers (Outer Ring)
+                { id: 'hobbes', label: 'Hobbes_v1', type: 'philosopher', x: 20, y: 15, r: 8, color: '#0ea5e9' },
+                { id: 'locke', label: 'Locke.exe', type: 'philosopher', x: 80, y: 15, r: 8, color: '#10b981' },
+                { id: 'montesquieu', label: 'Montesquieu', type: 'philosopher', x: 15, y: 50, r: 8, color: '#8b5cf6' },
+                { id: 'rousseau', label: 'Rousseau.js', type: 'philosopher', x: 80, y: 85, r: 8, color: '#ec4899' },
+                { id: 'sieyes', label: 'Sieyes_Hack', type: 'philosopher', x: 20, y: 85, r: 8, color: '#f43f5e' },
+                
+                // Concepts (Inner Ring / Bridging)
+                { id: 'contrat', label: 'CGU_Contrat', type: 'concept', x: 35, y: 25, r: 6, color: '#475569' },
+                { id: 'liberte', label: 'Save_Liberte', type: 'concept', x: 65, y: 25, r: 6, color: '#475569' },
+                { id: 'prejuge', label: 'Cache_Sagesse', type: 'concept', x: 35, y: 75, r: 6, color: '#475569' },
+                { id: 'religion', label: 'Auth_Religion', type: 'concept', x: 65, y: 75, r: 6, color: '#475569' },
+                { id: 'propriete', label: 'AntiLag_Prop', type: 'concept', x: 75, y: 50, r: 6, color: '#475569' },
+                { id: 'imagination', label: 'UI_Emotion', type: 'concept', x: 50, y: 20, r: 6, color: '#475569' }
+            ],
+            explanations: {
+                'burke': {
+                    title: "Edmund Burke [Dev Senior]",
+                    subtitle: "STATUT : Défense du Code Legacy",
+                    icon: "terminal",
+                    color: "text-amber-500",
+                    bg: "bg-amber-500/10 border-amber-500/30",
+                    content: "L architecte ultime du conservatisme. Il ne rejette pas les mises à jour, mais il sait que supprimer le code source d origine (Tabula Rasa) fera définitivement planter le système."
+                },
+                'hobbes': {
+                    title: "Hobbes_v1.0",
+                    subtitle: "STATUT : Sécurité Bruteforce",
+                    icon: "shield-alert",
+                    color: "text-blue-500",
+                    bg: "bg-blue-500/10 border-blue-500/30",
+                    content: "Burke admet que le serveur a besoin d ordre pour éviter le chaos PvP. Mais il rejette la logique froide de Hobbes. Un serveur construit purement sur la peur d être banni devient un cauchemar totalitaire."
+                },
+                'locke': {
+                    title: "Locke.exe",
+                    subtitle: "STATUT : Moteur de Propriété",
+                    icon: "box",
+                    color: "text-green-500",
+                    bg: "bg-green-500/10 border-green-500/30",
+                    content: "Burke hérite du système d inventaire de Locke (propriété). Mais il le patch : la propriété n est pas juste un droit, c est le lourd lest nécessaire pour empêcher le serveur de laguer quand les intellectuels radicaux essaient de pousser des mises à jour expérimentales."
+                },
+                'montesquieu': {
+                    title: "Architecture Montesquieu",
+                    subtitle: "STATUT : Nœuds Décentralisés",
+                    icon: "network",
+                    color: "text-purple-500",
+                    bg: "bg-purple-500/10 border-purple-500/30",
+                    content: "Compatibilité profonde. Burke conserve l idée que le pouvoir doit être distribué à travers des nœuds legacy (Noblesse, Église). Une architecture de serveur complètement plate et centralisée est très vulnérable aux exploits autoritaires."
+                },
+                'rousseau': {
+                    title: "Rousseau.js",
+                    subtitle: "STATUT : Gestion de Communauté Toxique",
+                    icon: "flame",
+                    color: "text-pink-500",
+                    bg: "bg-pink-500/10 border-pink-500/30",
+                    content: "Burke met agressivement en quarantaine la logique de Rousseau. Donner un accès root à l humeur quotidienne de la base de joueurs (Volonté Générale) est une tyrannie. Vous ne pouvez pas laisser les joueurs actuels supprimer les accomplissements des générations passées."
+                },
+                'sieyes': {
+                    title: "Sieyes_Exploit_Root",
+                    subtitle: "STATUT : MENACE CRITIQUE",
+                    icon: "bomb",
+                    color: "text-red-500",
+                    bg: "bg-red-500/10 border-red-500/30",
+                    content: "Le script kiddie par excellence. Sieyès veut exécuter un wipe complet de tout le serveur pour le réécrire sur la base d une raison abstraite pure. Burke considère cela comme la forme suprême de l arrogance des développeurs."
+                },
+                'contrat': {
+                    title: "CGU_Contrat",
+                    subtitle: "Save State Transgénérationnelle",
+                    icon: "database",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Ce n est pas un CLUF temporaire que vous acceptez pour jouer aujourd hui. C est une blockchain sacrée connectant les joueurs morts, les joueurs actuels et les joueurs qui n ont pas encore spawn. Nous ne possédons pas le jeu, nous louons juste l espace serveur."
+                },
+                'liberte': {
+                    title: "Save_Liberte",
+                    subtitle: "Specs Héritées vs Abstraites",
+                    icon: "download",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Vous ne spawnez pas avec des Droits de l Homme abstraits. Vous héritez de privilèges spécifiques et localisés que les générations précédentes ont farmés (comme le patch Magna Carta). C est un loot legacy, pas une stat de base."
+                },
+                'prejuge': {
+                    title: "Cache_Sagesse",
+                    subtitle: "Pourquoi tout recalculer ?",
+                    icon: "cpu",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Le coup de génie de Burke : Le Préjugé est juste de la Mémoire Cache. Les CPU individuels sont faibles. Les traditions sont des algorithmes qui ont passé avec succès des stress tests de survie sur des millions d itérations. Utilisez le cache !"
+                },
+                'religion': {
+                    title: "Auth_Religion",
+                    subtitle: "Consécration Globale du Serveur",
+                    icon: "key",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Un serveur complètement séculier et hyper-rationnel perd toute son aura d admin. Sans authentification sacrée, les modos doivent finalement imposer les règles par la violence physique (l algorithme de la Guillotine)."
+                },
+                'propriete': {
+                    title: "AntiLag_Prop",
+                    subtitle: "Ralentir les Try-Harders",
+                    icon: "anchor",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Les grandes propriétés héritées sont lourdes et lentes. C est une feature, pas un bug. Cela empêche les utilisateurs très intelligents mais sans véritable investissement de pousser constamment des changements de meta dangereux et destructeurs de jeu."
+                },
+                'imagination': {
+                    title: "UI_Emotion",
+                    subtitle: "Graphismes Hi-Res > Code Brut",
+                    icon: "monitor",
+                    color: "text-gray-400",
+                    bg: "bg-gray-800/50 border-gray-700",
+                    content: "Qu est-ce qui fait que les joueurs aiment le jeu ? Le lore, la magnifique interface, la chevalerie. Si vous enlevez ça, il ne reste plus qu un tableur froid et brutal de dynamiques de pouvoir."
+                }
+            },
+            relationships: {
+                'burke': ['hobbes', 'locke', 'montesquieu', 'rousseau', 'sieyes', 'contrat', 'liberte', 'prejuge', 'religion', 'propriete', 'imagination'],
+                'hobbes': ['burke', 'contrat', 'imagination'],
+                'locke': ['burke', 'propriete', 'liberte'],
+                'montesquieu': ['burke', 'liberte', 'prejuge'],
+                'rousseau': ['burke', 'contrat', 'prejuge'],
+                'sieyes': ['burke', 'contrat', 'religion', 'propriete'],
+                'contrat': ['burke', 'hobbes', 'rousseau', 'sieyes'],
+                'liberte': ['burke', 'locke', 'montesquieu'],
+                'prejuge': ['burke', 'rousseau', 'montesquieu'],
+                'religion': ['burke', 'sieyes'],
+                'propriete': ['burke', 'locke', 'sieyes'],
+                'imagination': ['burke', 'hobbes']
+            }
+        };
+
+        function renderNetwork() {
+            let svgContent = '';
+            
+            // Generate Links
+            networkData.nodes.forEach(node1 => {
+                networkData.nodes.forEach(node2 => {
+                    if (node1.id !== node2.id) {
+                        const linkId = `link-${node1.id}-${node2.id}`;
+                        svgContent += `<path id="${linkId}" class="link-path inactive" d="M ${node1.x} ${node1.y} L ${node2.x} ${node2.y}"></path>`;
+                    }
+                });
+            });
+
+            // Generate Nodes
+            networkData.nodes.forEach(node => {
+                const isCenter = node.type === 'center';
+                const isConcept = node.type === 'concept';
+                
+                svgContent += `
+                    <circle 
+                        id="node-${node.id}"
+                        class="node-circle" 
+                        cx="${node.x}" 
+                        cy="${node.y}" 
+                        r="${node.r}" 
+                        fill="${isCenter ? node.color : (isConcept ? '#1e293b' : '#020617')}" 
+                        stroke="${node.color}"
+                        stroke-width="${isCenter ? 0 : (isConcept ? 1 : 2)}"
+                        onclick="selectNode('${node.id}')"
+                    ></circle>
+                `;
+
+                const textY = node.y + node.r + 3;
+                svgContent += `<text x="${node.x}" y="${textY}" class="node-label">${node.label}</text>`;
+                
+                if (isCenter) {
+                    svgContent += `<text x="${node.x}" y="${node.y}" class="node-text" fill="black">BURKE</text>`;
+                }
+            });
+
+            svg.innerHTML = svgContent;
+        }
+
+        window.selectNode = function(nodeId) {
+            // Reset
+            document.querySelectorAll('.node-circle').forEach(el => el.classList.remove('selected-node'));
+            document.querySelectorAll('.link-path').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('inactive');
+            });
+
+            // Highlight
+            const selectedEl = document.getElementById(`node-${nodeId}`);
+            if (selectedEl) selectedEl.classList.add('selected-node');
+
+            // Draw Lines
+            const relations = networkData.relationships[nodeId] || [];
+            relations.forEach(targetId => {
+                let path = document.getElementById(`link-${nodeId}-${targetId}`);
+                if (!path) path = document.getElementById(`link-${targetId}-${nodeId}`);
+                if (path) {
+                    path.classList.remove('inactive');
+                    path.classList.add('active');
+                }
+            });
+
+            // Update Panel
+            const info = networkData.explanations[nodeId];
+            if (info) {
+                detailsPanel.innerHTML = `
+                    <div class="animate-[fadeIn_0.3s_ease-out]">
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl ${info.bg} ${info.color} mb-5 border">
+                            <i data-lucide="${info.icon}" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-1 font-mono">${info.title}</h3>
+                        <p class="text-sm font-bold uppercase tracking-wider ${info.color} mb-5 font-mono">> ${info.subtitle}</p>
+                        <div class="text-gray-300 leading-relaxed text-[15px] bg-black/50 p-6 rounded-xl border border-gray-800">
+                            ${info.content}
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        };
+
+        // Init SVG
+        renderNetwork();
+        setTimeout(() => { selectNode('burke'); }, 600);
+
+    </script>
+</body>
+</html>
+```
